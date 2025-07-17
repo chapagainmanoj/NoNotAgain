@@ -18,7 +18,7 @@
 2. Open Chrome and go to `chrome://extensions/`  
 3. Enable **Developer mode** (toggle in the top right) 
 4. Click **Load unpacked** and select the folder  
-5. Voilà! The extension icon should appear—click it to add/remind notes  
+5. Voilà! The extension icon should appear click it to add/remind notes  
 
 ---
 
