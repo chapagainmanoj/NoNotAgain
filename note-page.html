@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Website Note</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .note-container {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 40px;
+            border-radius: 20px;
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: slideIn 0.5s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-50px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .note-header {
+            margin-bottom: 30px;
+        }
+
+        .note-header h1 {
+            color: #2d3436;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .domain-name {
+            color: #6c5ce7;
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        .note-content {
+            background: rgba(255, 255, 255, 0.8);
+            padding: 30px;
+            border-radius: 15px;
+            margin: 30px 0;
+            border-left: 6px solid #6c5ce7;
+        }
+
+        .note-text {
+            font-size: 1.2rem;
+            line-height: 1.6;
+            color: #2d3436;
+            white-space: pre-wrap;
+            margin-bottom: 0;
+        }
+
+        .note-actions {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        .secondary-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-small {
+            padding: 10px 20px;
+            font-size: 14px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-continue {
+            background: #00b894;
+            color: white;
+        }
+
+        .btn-continue:hover {
+            background: #00a085;
+        }
+
+        .btn-bypass {
+            background: #fdcb6e;
+            color: #2d3436;
+        }
+
+        .btn-bypass:hover {
+            background: #e17055;
+            color: white;
+        }
+
+        .btn-edit {
+            background: #74b9ff;
+            color: white;
+        }
+
+        .btn-edit:hover {
+            background: #0984e3;
+        }
+
+        .btn-delete {
+            background: #ff7675;
+            color: white;
+        }
+
+        .btn-delete:hover {
+            background: #d63031;
+        }
+
+        .btn-back {
+            background: #636e72;
+            color: white;
+        }
+
+        .btn-back:hover {
+            background: #2d3436;
+        }
+
+        .btn-cancel {
+            background: #636e72;
+            color: white;
+        }
+
+        .btn-cancel:hover {
+            background: #2d3436;
+        }
+
+        .bypass-options {
+            display: none;
+            margin-top: 20px;
+            padding: 20px;
+            background: rgba(253, 203, 110, 0.1);
+            border-radius: 10px;
+            border: 2px solid #fdcb6e;
+        }
+
+        .bypass-options h3 {
+            color: #2d3436;
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+        }
+
+        .bypass-duration-options {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+        }
+
+        .bypass-duration-btn {
+            background: #fdcb6e;
+            color: #2d3436;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: bold;
+        }
+
+        .bypass-duration-btn:hover {
+            background: #e17055;
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .loading {
+            color: #636e72;
+            font-style: italic;
+        }
+
+        .error {
+            color: #d63031;
+            background: rgba(255, 118, 117, 0.1);
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid #ff7675;
+        }
+
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(45, 52, 54, 0.1);
+            font-size: 0.9rem;
+            color: #636e72;
+        }
+
+        .confirmation-message {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #00b894;
+            color: white;
+            padding: 20px 30px;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: bold;
+            z-index: 1000000;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            animation: fadeInOut 2s ease-out;
+        }
+
+        @keyframes fadeInOut {
+            0% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.8);
+            }
+
+            20% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1);
+            }
+
+            80% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1);
+            }
+
+            100% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.8);
+            }
+        }
+
+        @media (max-width: 480px) {
+            .note-container {
+                padding: 20px;
+            }
+
+            .note-header h1 {
+                font-size: 2rem;
+            }
+
+            .note-actions,
+            .secondary-actions {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .btn {
+                width: 100%;
+                max-width: 250px;
+            }
+
+            .bypass-duration-options {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .bypass-duration-btn {
+                width: 100%;
+                max-width: 150px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="note-container">
+        <div class="note-header">
+            <h1>📝 No Not Again</h1>
+            <div class="domain-name" id="domainName">Loading...</div>
+        </div>
+
+        <div id="noteContent" class="loading">
+            Loading your note...
+        </div>
+
+        <div class="footer">
+            <p>No Not Again - Helping you browse mindfully</p>
+        </div>
+    </div>
+    <script src="note-page.js"></script>
+
+</body>
+
+</html>

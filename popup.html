@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>No Not Again</title>
+    <link rel="stylesheet" href="popup.css">
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>🙈 No Not Again</h1>
+            <p class="subtitle">Manage your website notes</p>
+        </header>
+
+        <div class="current-site" id="currentSite">
+            <h3>Current Site</h3>
+            <div class="site-info">
+                <span class="domain" id="currentDomain">Loading...</span>
+                <div class="actions">
+                    <button id="addNoteBtn" class="btn btn-primary">Add Note</button>
+                    <button id="editNoteBtn" class="btn btn-secondary" style="display: none;">Edit Note</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="note-form" id="noteForm" style="display: none;">
+            <h3 id="formTitle">Add Note</h3>
+            <div class="form-group">
+                <label for="domainInput">Website:</label>
+                <input type="text" id="domainInput" placeholder="e.g., facebook.com">
+            </div>
+            <div class="form-group">
+                <label for="noteText">Note:</label>
+                <textarea id="noteText" placeholder="Enter your note here..." rows="4"></textarea>
+            </div>
+            <div class="form-actions">
+                <button id="saveBtn" class="btn btn-primary">Save</button>
+                <button id="cancelBtn" class="btn btn-secondary">Cancel</button>
+            </div>
+        </div>
+
+        <div class="notes-list" id="notesList">
+            <h3>Your Notes</h3>
+            <div id="notesContainer">
+                <!-- Notes will be populated here -->
+            </div>
+        </div>
+    </div>
+
+    <script src="popup.js"></script>
+</body>
+
+</html>
