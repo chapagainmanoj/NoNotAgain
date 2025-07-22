@@ -5,7 +5,6 @@
   "description": "Shows personal notes before accessing specified websites",
   "permissions": [
     "storage",
-    "activeTab",
     "tabs",
     "declarativeNetRequest"
   ],
