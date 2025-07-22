@@ -7,7 +7,6 @@
     "storage",
     "activeTab",
     "tabs",
-    "webRequest",
     "declarativeNetRequest"
   ],
   "host_permissions": [
