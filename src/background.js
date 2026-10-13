@@ -1,5 +1,4 @@
 // Background script for No Not Again
-let blockedUrls = new Set();
 
 chrome.runtime.onInstalled.addListener(() => {
     console.log('No Not again installed');
@@ -40,20 +39,23 @@ async function setupRequestInterception() {
         id: index + 1,
         priority: 1,
         action: {
-            type: "redirect",
+            type: 'redirect',
             redirect: {
-                url: chrome.runtime.getURL("note-page.html") + "?domain=" + encodeURIComponent(domain)
-            }
+                url:
+                    chrome.runtime.getURL('note-page.html') +
+                    '?domain=' +
+                    encodeURIComponent(domain),
+            },
         },
         condition: {
             urlFilter: `||${domain}^`, // matches the domain and its subdomains
-            resourceTypes: ["main_frame"]
-        }
+            resourceTypes: ['main_frame'],
+        },
     }));
 
     await chrome.declarativeNetRequest.updateDynamicRules({
         removeRuleIds: Array.from({ length: 1000 }, (_, i) => i + 1), // Remove old rules
-        addRules: rules
+        addRules: rules,
     });
 
     console.log(`Created ${rules.length} blocking rules for domains:`, activeDomains);
@@ -74,15 +76,21 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
                 if (bypassData[bypassKey] && currentTime < bypassData[bypassKey].expireTime) {
                     console.log('Bypass active for domain:', domain);
                     return; // Don't block
-                } else if (bypassData[bypassKey] && currentTime > bypassData[bypassKey].expireTime) {
+                } else if (
+                    bypassData[bypassKey] &&
+                    currentTime > bypassData[bypassKey].expireTime
+                ) {
                     await chrome.storage.local.remove([bypassKey]);
                     console.log('Removed expired bypass for domain:', domain);
                 }
 
                 console.log('Fallback blocking for domain:', domain);
-                const notePageUrl = chrome.runtime.getURL("note-page.html") +
-                    "?domain=" + encodeURIComponent(domain) +
-                    "&original=" + encodeURIComponent(tab.url);
+                const notePageUrl =
+                    chrome.runtime.getURL('note-page.html') +
+                    '?domain=' +
+                    encodeURIComponent(domain) +
+                    '&original=' +
+                    encodeURIComponent(tab.url);
                 chrome.tabs.update(tabId, { url: notePageUrl });
             }
         }
@@ -94,7 +102,7 @@ function extractDomain(url) {
     try {
         const urlObj = new URL(url);
         return urlObj.hostname.replace(/^www\./, '');
-    } catch (e) {
+    } catch {
         return null;
     }
 }
@@ -114,7 +122,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     } else if (request.action === 'continueToSite') {
         chrome.tabs.update(sender.tab.id, { url: request.originalUrl });
     } else if (request.action === 'getNoteData') {
-        chrome.storage.sync.get([request.domain]).then(result => {
+        chrome.storage.sync.get([request.domain]).then((result) => {
             sendResponse(result[request.domain]);
         });
         return true; // Keep message channel open for async response

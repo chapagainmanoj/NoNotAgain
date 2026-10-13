@@ -26,7 +26,7 @@ async function loadNoteData() {
     try {
         const response = await chrome.runtime.sendMessage({
             action: 'getNoteData',
-            domain: currentDomain
+            domain: currentDomain,
         });
 
         if (response && response.text) {
@@ -75,7 +75,7 @@ function displayNote(noteData) {
     document.getElementById('backBtn').addEventListener('click', goBack);
     document.getElementById('cancelBypassBtn').addEventListener('click', hideBypassOptions);
 
-    document.querySelectorAll('.bypass-duration-btn').forEach(btn => {
+    document.querySelectorAll('.bypass-duration-btn').forEach((btn) => {
         btn.addEventListener('click', (e) => {
             const duration = parseInt(e.target.dataset.duration);
             setBypass(duration);
@@ -87,7 +87,7 @@ function continueToSite() {
     if (originalUrl) {
         chrome.runtime.sendMessage({
             action: 'continueToSite',
-            originalUrl: originalUrl
+            originalUrl: originalUrl,
         });
     } else {
         window.location.href = `https://${currentDomain}`;
@@ -112,21 +112,20 @@ async function setBypass(duration) {
         const bypassKey = `bypass_${currentDomain}`;
         const bypassData = {
             expireTime: Date.now() + duration,
-            createdAt: Date.now()
+            createdAt: Date.now(),
         };
 
         await chrome.storage.local.set({
-            [bypassKey]: bypassData
+            [bypassKey]: bypassData,
         });
 
         chrome.runtime.sendMessage({
             action: 'bypassSet',
-            domain: currentDomain
+            domain: currentDomain,
         });
 
         const durationText = getDurationText(duration);
         showBypassConfirmation(durationText);
-
     } catch (error) {
         console.error('Error setting bypass:', error);
         alert('Error setting bypass. Please try again.');
@@ -162,15 +161,11 @@ function showBypassConfirmation(duration) {
     }, 2000);
 }
 
-function editNote() {
-    chrome.runtime.openOptionsPage();
-}
-
 function deleteNote() {
     if (confirm(`Are you sure you want to delete the note for ${currentDomain}?`)) {
         chrome.runtime.sendMessage({
             action: 'deleteNote',
-            domain: currentDomain
+            domain: currentDomain,
         });
 
         setTimeout(() => {

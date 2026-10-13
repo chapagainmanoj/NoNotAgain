@@ -61,7 +61,6 @@ async function loadBypassStatus() {
 
 function showBypassStatus(expireTime) {
     const currentSiteDiv = document.getElementById('currentSite');
-    const expireDate = new Date(expireTime);
     const timeLeft = getTimeLeft(expireTime);
 
     const bypassStatus = document.createElement('div');
@@ -126,7 +125,7 @@ async function loadAllNotes() {
     try {
         const [syncResult, localResult] = await Promise.all([
             chrome.storage.sync.get(null),
-            chrome.storage.local.get(null)
+            chrome.storage.local.get(null),
         ]);
 
         const notesContainer = document.getElementById('notesContainer');
@@ -137,7 +136,7 @@ async function loadAllNotes() {
             return;
         }
 
-        const notesWithBypass = domains.map(domain => {
+        const notesWithBypass = domains.map((domain) => {
             const note = syncResult[domain];
             const bypassKey = `bypass_${domain}`;
             const bypassData = localResult[bypassKey];
@@ -163,10 +162,12 @@ async function loadAllNotes() {
             return { domain, note, bypassStatus };
         });
 
-        notesContainer.innerHTML = notesWithBypass.map(({ domain, note, bypassStatus }) => {
-            const preview = note.text.length > 60 ? note.text.substring(0, 60) + '...' : note.text;
+        notesContainer.innerHTML = notesWithBypass
+            .map(({ domain, note, bypassStatus }) => {
+                const preview =
+                    note.text.length > 60 ? note.text.substring(0, 60) + '...' : note.text;
 
-            return `
+                return `
                 <div class="note-item">
                     <div class="note-header">
                         <span class="note-domain">${domain}</span>
@@ -179,9 +180,10 @@ async function loadAllNotes() {
                     ${bypassStatus}
                 </div>
             `;
-        }).join('');
+            })
+            .join('');
 
-        document.querySelectorAll('.note-actions button').forEach(button => {
+        document.querySelectorAll('.note-actions button').forEach((button) => {
             button.addEventListener('click', (e) => {
                 const domain = e.target.dataset.domain;
                 const action = e.target.dataset.action;
@@ -193,10 +195,10 @@ async function loadAllNotes() {
                 }
             });
         });
-
     } catch (error) {
         console.error('Error loading notes:', error);
-        document.getElementById('notesContainer').innerHTML = '<div class="empty-state">Error loading notes</div>';
+        document.getElementById('notesContainer').innerHTML =
+            '<div class="empty-state">Error loading notes</div>';
     }
 }
 
@@ -266,11 +268,11 @@ async function saveNote() {
         const noteData = {
             text: noteText,
             createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
+            updatedAt: new Date().toISOString(),
         };
 
         await chrome.storage.sync.set({
-            [domain]: noteData
+            [domain]: noteData,
         });
 
         // Update background script rules
@@ -283,7 +285,6 @@ async function saveNote() {
 
         // Show success message briefly
         showMessage('Note saved successfully!', 'success');
-
     } catch (error) {
         console.error('Error saving note:', error);
         showMessage('Error saving note', 'error');

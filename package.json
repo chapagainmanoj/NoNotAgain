@@ -1,0 +1,25 @@
+{
+    "name": "no-not-again",
+    "version": "1.0.1",
+    "private": true,
+    "description": "Chrome/Edge extension that shows personal notes before accessing specified websites",
+    "license": "MIT",
+    "type": "module",
+    "scripts": {
+        "lint": "eslint .",
+        "format": "prettier --write .",
+        "format:check": "prettier --check .",
+        "test": "vitest run",
+        "icons": "for s in 16 32 48 128; do rsvg-convert -w $s -h $s assets/icon.svg -o src/icons/icon-$s.png; done",
+        "zip": "node scripts/zip.js",
+        "check": "pnpm lint && pnpm format:check && pnpm test"
+    },
+    "devDependencies": {
+        "@eslint/js": "^9.39.5",
+        "eslint": "^9.39.5",
+        "globals": "^17.13.0",
+        "prettier": "^3.9.10",
+        "vitest": "^5.0.3"
+    },
+    "packageManager": "pnpm@11.9.0"
+}
