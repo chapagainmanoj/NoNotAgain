@@ -1,3 +1,7 @@
+[hidden] {
+    display: none !important;
+}
+
 /* Popup styles for No Not Again */
 
 * {
@@ -51,12 +55,25 @@ header h1 {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 10px;
 }
 
 .domain {
     font-weight: bold;
     color: #6c5ce7;
     font-size: 0.9rem;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.domain.unavailable {
+    color: #636e72;
+    font-weight: normal;
+    font-style: italic;
+}
+
+.actions .btn {
+    white-space: nowrap;
 }
 
 .actions {
@@ -195,6 +212,8 @@ header h1 {
 }
 
 .note-domain {
+    min-width: 0;
+    overflow-wrap: anywhere;
     font-weight: bold;
     color: #2d3436;
     font-size: 0.9rem;
@@ -241,4 +260,74 @@ header h1 {
 
 .notes-list::-webkit-scrollbar-thumb:hover {
     background: rgba(108, 92, 231, 0.8);
+}
+
+.bypass-status {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(253, 203, 110, 0.2);
+    padding: 10px;
+    border-radius: 8px;
+    margin-top: 10px;
+    border: 1px solid #fdcb6e;
+}
+
+.bypass-status strong {
+    color: #e17055;
+}
+
+.bypass-status-time {
+    font-size: 0.8rem;
+    color: #636e72;
+    margin-top: 4px;
+}
+
+.btn-remove-bypass {
+    background: #ff7675;
+    color: white;
+    font-size: 0.7rem;
+    padding: 4px 8px;
+}
+
+.bypass-badge {
+    background: rgba(253, 203, 110, 0.3);
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    color: #e17055;
+    margin-top: 4px;
+    font-weight: bold;
+}
+
+.message {
+    position: fixed;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    z-index: 1000;
+    animation: slideDown 0.3s ease-out;
+}
+
+.message.success {
+    background: #00b894;
+}
+
+.message.error {
+    background: #ff7675;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
 }

@@ -12,10 +12,11 @@
         "48": "icons/icon-48.png",
         "128": "icons/icon-128.png"
     },
-    "permissions": ["storage", "tabs", "declarativeNetRequest"],
+    "permissions": ["storage", "alarms", "declarativeNetRequest"],
     "host_permissions": ["http://*/*", "https://*/*"],
     "background": {
-        "service_worker": "background.js"
+        "service_worker": "background.js",
+        "type": "module"
     },
     "action": {
         "default_popup": "popup.html",

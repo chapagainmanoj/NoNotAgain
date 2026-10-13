@@ -11,6 +11,7 @@ Chrome/Edge MV3 extension: shows a personal note before a site loads. Plain JS, 
 ## Layout
 
 - `src/` is exactly what ships; load it unpacked from `chrome://extensions`
+- `domain.js` holds shared logic (normalizing, matching, rule building); it's the unit-tested part. All scripts are ES modules
 - `background.js` builds `declarativeNetRequest` redirect rules to `note-page.html`; a `tabs.onUpdated` fallback catches misses
 - Notes: `chrome.storage.sync`, keyed by bare hostname (no `www.`). Bypasses: `chrome.storage.local` as `bypass_<domain>`
 

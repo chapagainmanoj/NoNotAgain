@@ -20,10 +20,17 @@
                     <span class="domain" id="currentDomain">Loading...</span>
                     <div class="actions">
                         <button id="addNoteBtn" class="btn btn-primary">Add Note</button>
-                        <button id="editNoteBtn" class="btn btn-secondary" style="display: none">
-                            Edit Note
-                        </button>
+                        <button id="editNoteBtn" class="btn btn-secondary" hidden>Edit Note</button>
                     </div>
+                </div>
+                <div class="bypass-status" id="bypassStatus" hidden>
+                    <div>
+                        <strong>⏰ Note Bypassed</strong>
+                        <div class="bypass-status-time" id="bypassTimeLeft"></div>
+                    </div>
+                    <button id="removeBypassBtn" class="btn btn-small btn-remove-bypass">
+                        Remove
+                    </button>
                 </div>
             </div>
 
@@ -55,6 +62,6 @@
             </div>
         </div>
 
-        <script src="popup.js"></script>
+        <script type="module" src="popup.js"></script>
     </body>
 </html>

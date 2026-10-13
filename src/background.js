@@ -1,132 +1,147 @@
 // Background script for No Not Again
+import {
+    NOTE_PAGE,
+    buildRedirectRules,
+    bypassKey,
+    domainFromUrl,
+    findNoteDomain,
+    isBypassActive,
+    normalizeDomain,
+    notePageUrl,
+} from './domain.js';
 
-chrome.runtime.onInstalled.addListener(() => {
-    console.log('No Not again installed');
-    setupRequestInterception();
+const DEBUG = false;
+const log = (...args) => DEBUG && console.log('[NoNotAgain]', ...args);
+
+const NOTE_PAGE_URL = chrome.runtime.getURL(NOTE_PAGE);
+const BYPASS_ALARM_PREFIX = 'bypass-expiry:';
+
+chrome.runtime.onInstalled.addListener(async ({ reason }) => {
+    if (reason === 'update') await migrateNoteKeys();
+    rebuildRules();
 });
 
-chrome.runtime.onStartup.addListener(() => {
-    setupRequestInterception();
+chrome.runtime.onStartup.addListener(() => rebuildRules());
+
+chrome.storage.onChanged.addListener(() => rebuildRules());
+
+chrome.alarms.onAlarm.addListener((alarm) => {
+    if (alarm.name.startsWith(BYPASS_ALARM_PREFIX)) rebuildRules();
 });
 
-// Setup request interception
-async function setupRequestInterception() {
-    const allNotes = await chrome.storage.sync.get(null);
-    const domains = Object.keys(allNotes);
+// Rebuilds are serialized; changes arriving mid-rebuild trigger one more pass instead of overlapping.
+let rebuilding = null;
+let rebuildAgain = false;
 
-    console.log('Setting up request interception for domains:', domains);
-
-    const bypassData = await chrome.storage.local.get(null);
-    const currentTime = Date.now();
-
-    const activeDomains = [];
-    for (const domain of domains) {
-        const bypassKey = `bypass_${domain}`;
-        const bypass = bypassData[bypassKey];
-
-        if (bypass && currentTime < bypass.expireTime) {
-            console.log(`Domain ${domain} has active bypass, skipping rule`);
-            continue;
-        } else if (bypass && currentTime > bypass.expireTime) {
-            await chrome.storage.local.remove([bypassKey]);
-            console.log(`Removed expired bypass for domain: ${domain}`);
-        }
-
-        activeDomains.push(domain);
+function rebuildRules() {
+    if (rebuilding) {
+        rebuildAgain = true;
+        return rebuilding;
     }
+    rebuilding = (async () => {
+        do {
+            rebuildAgain = false;
+            await applyRules();
+        } while (rebuildAgain);
+    })()
+        .catch((error) => console.error('Failed to update redirect rules:', error))
+        .finally(() => {
+            rebuilding = null;
+        });
+    return rebuilding;
+}
 
-    const rules = activeDomains.map((domain, index) => ({
-        id: index + 1,
-        priority: 1,
-        action: {
-            type: 'redirect',
-            redirect: {
-                url:
-                    chrome.runtime.getURL('note-page.html') +
-                    '?domain=' +
-                    encodeURIComponent(domain),
-            },
-        },
-        condition: {
-            urlFilter: `||${domain}^`, // matches the domain and its subdomains
-            resourceTypes: ['main_frame'],
-        },
-    }));
+async function applyRules() {
+    const [notes, local, existingRules] = await Promise.all([
+        chrome.storage.sync.get(null),
+        chrome.storage.local.get(null),
+        chrome.declarativeNetRequest.getDynamicRules(),
+    ]);
+
+    const now = Date.now();
+    const blocked = [];
+    const expiredKeys = [];
+    await chrome.alarms.clearAll();
+
+    for (const domain of Object.keys(notes)) {
+        const bypass = local[bypassKey(domain)];
+        if (isBypassActive(bypass, now)) {
+            chrome.alarms.create(BYPASS_ALARM_PREFIX + domain, { when: bypass.expireTime });
+        } else {
+            if (bypass) expiredKeys.push(bypassKey(domain));
+            blocked.push(domain);
+        }
+    }
 
     await chrome.declarativeNetRequest.updateDynamicRules({
-        removeRuleIds: Array.from({ length: 1000 }, (_, i) => i + 1), // Remove old rules
-        addRules: rules,
+        removeRuleIds: existingRules.map((rule) => rule.id),
+        addRules: buildRedirectRules(blocked, NOTE_PAGE_URL),
     });
+    if (expiredKeys.length) await chrome.storage.local.remove(expiredKeys);
 
-    console.log(`Created ${rules.length} blocking rules for domains:`, activeDomains);
+    log('Blocking', blocked);
 }
 
+// 1.0 saved whatever was typed in the domain box; re-key notes under their normalized domain.
+async function migrateNoteKeys() {
+    const notes = await chrome.storage.sync.get(null);
+    const moved = {};
+    const stale = [];
+    for (const [key, note] of Object.entries(notes)) {
+        const domain = normalizeDomain(key);
+        if (domain === key) continue;
+        stale.push(key);
+        if (domain && !notes[domain]) moved[domain] = note;
+    }
+    if (Object.keys(moved).length) await chrome.storage.sync.set(moved);
+    if (stale.length) await chrome.storage.sync.remove(stale);
+    log('Migrated note keys', moved, stale);
+}
+
+// Fallback for navigations the redirect rules miss, e.g. right after a bypass expires.
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
-    if (changeInfo.status === 'loading' && tab.url && !tab.url.includes('note-page.html')) {
-        const domain = extractDomain(tab.url);
+    if (changeInfo.status !== 'loading' || !tab.url) return;
 
-        if (domain) {
-            const result = await chrome.storage.sync.get([domain]);
+    const domain = findNoteDomain(
+        domainFromUrl(tab.url),
+        Object.keys(await chrome.storage.sync.get(null)),
+    );
+    if (!domain) return;
 
-            if (result[domain]) {
-                const bypassKey = `bypass_${domain}`;
-                const bypassData = await chrome.storage.local.get([bypassKey]);
-                const currentTime = Date.now();
+    const key = bypassKey(domain);
+    const { [key]: bypass } = await chrome.storage.local.get(key);
+    if (isBypassActive(bypass)) return;
 
-                if (bypassData[bypassKey] && currentTime < bypassData[bypassKey].expireTime) {
-                    console.log('Bypass active for domain:', domain);
-                    return; // Don't block
-                } else if (
-                    bypassData[bypassKey] &&
-                    currentTime > bypassData[bypassKey].expireTime
-                ) {
-                    await chrome.storage.local.remove([bypassKey]);
-                    console.log('Removed expired bypass for domain:', domain);
-                }
-
-                console.log('Fallback blocking for domain:', domain);
-                const notePageUrl =
-                    chrome.runtime.getURL('note-page.html') +
-                    '?domain=' +
-                    encodeURIComponent(domain) +
-                    '&original=' +
-                    encodeURIComponent(tab.url);
-                chrome.tabs.update(tabId, { url: notePageUrl });
-            }
-        }
-    }
+    log('Fallback redirect for', domain);
+    chrome.tabs.update(tabId, { url: notePageUrl(NOTE_PAGE_URL, domain, tab.url) });
 });
 
-// Extract domain from URL
-function extractDomain(url) {
-    try {
-        const urlObj = new URL(url);
-        return urlObj.hostname.replace(/^www\./, '');
-    } catch {
-        return null;
-    }
-}
-
-// Listen for storage changes to update rules
-chrome.storage.onChanged.addListener((changes, namespace) => {
-    if (namespace === 'sync' || namespace === 'local') {
-        setupRequestInterception();
-    }
-});
-
-// Handle messages from popup and note page
+// The note page asks the background to change state so it can wait for the rules to update
+// before navigating back to the site.
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    if (request.action === 'deleteNote') {
-        chrome.storage.sync.remove([request.domain]);
-        setupRequestInterception();
-    } else if (request.action === 'continueToSite') {
-        chrome.tabs.update(sender.tab.id, { url: request.originalUrl });
-    } else if (request.action === 'getNoteData') {
-        chrome.storage.sync.get([request.domain]).then((result) => {
-            sendResponse(result[request.domain]);
-        });
-        return true; // Keep message channel open for async response
-    } else if (request.action === 'bypassSet') {
-        setupRequestInterception();
-    }
+    const handlers = {
+        setBypass: () =>
+            chrome.storage.local.set({
+                [bypassKey(request.domain)]: {
+                    expireTime: Date.now() + request.duration,
+                    createdAt: Date.now(),
+                },
+            }),
+        deleteNote: () =>
+            Promise.all([
+                chrome.storage.sync.remove(request.domain),
+                chrome.storage.local.remove(bypassKey(request.domain)),
+            ]),
+    };
+
+    const handler = handlers[request.action];
+    if (!handler) return false;
+
+    handler()
+        .then(() => rebuildRules())
+        .then(
+            () => sendResponse({ ok: true }),
+            (error) => sendResponse({ ok: false, error: error.message }),
+        );
+    return true; // Keep message channel open for async response
 });

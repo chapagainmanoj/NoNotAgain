@@ -7,7 +7,7 @@ export default [
     {
         files: ['src/**/*.js'],
         languageOptions: {
-            sourceType: 'script',
+            sourceType: 'module',
             globals: { ...globals.browser, ...globals.webextensions },
         },
     },

@@ -1,107 +1,78 @@
 // Popup script for No Not Again
-// Enhanced version with bypass management
+import {
+    MAX_NOTE_LENGTH,
+    NOTE_PAGE,
+    bypassKey,
+    domainFromUrl,
+    findNoteDomain,
+    isBypassActive,
+    normalizeDomain,
+    parseNotePageUrl,
+} from './domain.js';
 
-let currentDomain = '';
+// Domain the current tab's note is (or would be) stored under; null on browser pages.
+let currentDomain = null;
+// Domain of the note open in the form when editing, so a domain change can remove the old note.
 let editingDomain = null;
 
+const $ = (id) => document.getElementById(id);
+
 document.addEventListener('DOMContentLoaded', async () => {
-    await loadCurrentSite();
-    await loadAllNotes();
-    await loadBypassStatus();
+    $('noteText').maxLength = MAX_NOTE_LENGTH;
     setupEventListeners();
+    await refresh();
 });
+
+async function refresh() {
+    await loadCurrentSite();
+    await Promise.all([loadAllNotes(), loadBypassStatus()]);
+}
 
 // Load current site information
 async function loadCurrentSite() {
+    const label = $('currentDomain');
     try {
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        const url = tab?.url || '';
+        const hostname = url.startsWith(chrome.runtime.getURL(NOTE_PAGE))
+            ? parseNotePageUrl(url).domain
+            : domainFromUrl(url);
 
-        if (tab.url) {
-            const url = new URL(tab.url);
-            currentDomain = url.hostname.replace(/^www\./, '');
-            document.getElementById('currentDomain').textContent = currentDomain;
+        const notes = await chrome.storage.sync.get(null);
+        const noteDomain = findNoteDomain(hostname, Object.keys(notes));
+        currentDomain = noteDomain || hostname;
 
-            const result = await chrome.storage.sync.get([currentDomain]);
-            if (result[currentDomain]) {
-                document.getElementById('addNoteBtn').style.display = 'none';
-                document.getElementById('editNoteBtn').style.display = 'block';
-            } else {
-                document.getElementById('addNoteBtn').style.display = 'block';
-                document.getElementById('editNoteBtn').style.display = 'none';
-            }
-        }
+        label.classList.toggle('unavailable', !currentDomain);
+        label.textContent = currentDomain || 'Notes can’t be added to this page';
+        $('addNoteBtn').hidden = Boolean(noteDomain);
+        $('editNoteBtn').hidden = !noteDomain;
     } catch (error) {
         console.error('Error loading current site:', error);
-        document.getElementById('currentDomain').textContent = 'Unable to detect';
+        currentDomain = null;
+        label.textContent = 'Unable to detect';
     }
 }
 
 // Load bypass status for current site
 async function loadBypassStatus() {
+    const status = $('bypassStatus');
+    status.hidden = true;
     if (!currentDomain) return;
 
     try {
-        const bypassKey = `bypass_${currentDomain}`;
-        const result = await chrome.storage.local.get([bypassKey]);
-
-        if (result[bypassKey]) {
-            const bypassData = result[bypassKey];
-            const now = Date.now();
-
-            if (now < bypassData.expireTime) {
-                showBypassStatus(bypassData.expireTime);
-            } else {
-                await chrome.storage.local.remove([bypassKey]);
-            }
+        const key = bypassKey(currentDomain);
+        const { [key]: bypass } = await chrome.storage.local.get(key);
+        if (isBypassActive(bypass)) {
+            $('bypassTimeLeft').textContent = `Expires in ${getTimeLeft(bypass.expireTime)}`;
+            status.hidden = false;
         }
     } catch (error) {
         console.error('Error loading bypass status:', error);
     }
 }
 
-function showBypassStatus(expireTime) {
-    const currentSiteDiv = document.getElementById('currentSite');
-    const timeLeft = getTimeLeft(expireTime);
-
-    const bypassStatus = document.createElement('div');
-    bypassStatus.className = 'bypass-status';
-    bypassStatus.innerHTML = `
-        <div style="
-            background: rgba(253, 203, 110, 0.2);
-            padding: 10px;
-            border-radius: 8px;
-            margin-top: 10px;
-            border: 1px solid #fdcb6e;
-        ">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    <strong style="color: #e17055;">⏰ Note Bypassed</strong>
-                    <div style="font-size: 0.8rem; color: #636e72; margin-top: 4px;">
-                        Expires in ${timeLeft}
-                    </div>
-                </div>
-                <button id="removeBypassBtn" class="btn btn-small" style="
-                    background: #ff7675;
-                    color: white;
-                    font-size: 0.7rem;
-                    padding: 4px 8px;
-                ">Remove</button>
-            </div>
-        </div>
-    `;
-
-    currentSiteDiv.appendChild(bypassStatus);
-
-    document.getElementById('removeBypassBtn').addEventListener('click', async () => {
-        await removeBypass(currentDomain);
-        bypassStatus.remove();
-        showMessage('Bypass removed successfully!', 'success');
-    });
-}
-
 function getTimeLeft(expireTime) {
-    const now = Date.now();
-    const diff = expireTime - now;
+    const diff = expireTime - Date.now();
 
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
     const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
@@ -116,246 +87,172 @@ function getTimeLeft(expireTime) {
     }
 }
 
-async function removeBypass(domain) {
-    const bypassKey = `bypass_${domain}`;
-    await chrome.storage.local.remove([bypassKey]);
+function el(tag, className, text) {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text !== undefined) node.textContent = text;
+    return node;
 }
 
 async function loadAllNotes() {
+    const container = $('notesContainer');
     try {
-        const [syncResult, localResult] = await Promise.all([
+        const [notes, local] = await Promise.all([
             chrome.storage.sync.get(null),
             chrome.storage.local.get(null),
         ]);
-
-        const notesContainer = document.getElementById('notesContainer');
-        const domains = Object.keys(syncResult);
+        const domains = Object.keys(notes).sort();
 
         if (domains.length === 0) {
-            notesContainer.innerHTML = '<div class="empty-state">No notes created yet</div>';
+            container.replaceChildren(el('div', 'empty-state', 'No notes created yet'));
             return;
         }
 
-        const notesWithBypass = domains.map((domain) => {
-            const note = syncResult[domain];
-            const bypassKey = `bypass_${domain}`;
-            const bypassData = localResult[bypassKey];
+        container.replaceChildren(
+            ...domains.map((domain) => {
+                const text = notes[domain].text;
+                const preview = text.length > 60 ? text.substring(0, 60) + '...' : text;
 
-            let bypassStatus = '';
-            if (bypassData && Date.now() < bypassData.expireTime) {
-                const timeLeft = getTimeLeft(bypassData.expireTime);
-                bypassStatus = `
-                    <div style="
-                        background: rgba(253, 203, 110, 0.3);
-                        padding: 4px 8px;
-                        border-radius: 4px;
-                        font-size: 0.7rem;
-                        color: #e17055;
-                        margin-top: 4px;
-                        font-weight: bold;
-                    ">
-                        ⏰ Bypassed (${timeLeft})
-                    </div>
-                `;
-            }
+                const edit = el('button', 'btn btn-secondary btn-small', 'Edit');
+                edit.addEventListener('click', () => showNoteForm('edit', domain));
+                const remove = el('button', 'btn btn-danger btn-small', 'Delete');
+                remove.addEventListener('click', () => deleteNote(domain));
 
-            return { domain, note, bypassStatus };
-        });
+                const actions = el('div', 'note-actions');
+                actions.append(edit, remove);
+                const header = el('div', 'note-header');
+                header.append(el('span', 'note-domain', domain), actions);
 
-        notesContainer.innerHTML = notesWithBypass
-            .map(({ domain, note, bypassStatus }) => {
-                const preview =
-                    note.text.length > 60 ? note.text.substring(0, 60) + '...' : note.text;
+                const item = el('div', 'note-item');
+                item.append(header, el('div', 'note-preview', preview));
 
-                return `
-                <div class="note-item">
-                    <div class="note-header">
-                        <span class="note-domain">${domain}</span>
-                        <div class="note-actions">
-                            <button class="btn btn-secondary btn-small" data-domain="${domain}" data-action="edit">Edit</button>
-                            <button class="btn btn-danger btn-small" data-domain="${domain}" data-action="delete">Delete</button>
-                        </div>
-                    </div>
-                    <div class="note-preview">${preview}</div>
-                    ${bypassStatus}
-                </div>
-            `;
-            })
-            .join('');
-
-        document.querySelectorAll('.note-actions button').forEach((button) => {
-            button.addEventListener('click', (e) => {
-                const domain = e.target.dataset.domain;
-                const action = e.target.dataset.action;
-
-                if (action === 'edit') {
-                    editNote(domain);
-                } else if (action === 'delete') {
-                    deleteNote(domain);
+                const bypass = local[bypassKey(domain)];
+                if (isBypassActive(bypass)) {
+                    const timeLeft = getTimeLeft(bypass.expireTime);
+                    item.append(el('div', 'bypass-badge', `⏰ Bypassed (${timeLeft})`));
                 }
-            });
-        });
+                return item;
+            }),
+        );
     } catch (error) {
         console.error('Error loading notes:', error);
-        document.getElementById('notesContainer').innerHTML =
-            '<div class="empty-state">Error loading notes</div>';
+        container.replaceChildren(el('div', 'empty-state', 'Error loading notes'));
     }
 }
 
 function setupEventListeners() {
-    document.getElementById('addNoteBtn').addEventListener('click', () => {
-        showNoteForm('add', currentDomain);
-    });
+    $('addNoteBtn').addEventListener('click', () => showNoteForm('add', currentDomain));
+    $('editNoteBtn').addEventListener('click', () => showNoteForm('edit', currentDomain));
 
-    document.getElementById('editNoteBtn').addEventListener('click', () => {
-        showNoteForm('edit', currentDomain);
-    });
+    $('saveBtn').addEventListener('click', saveNote);
+    $('cancelBtn').addEventListener('click', hideNoteForm);
 
-    document.getElementById('saveBtn').addEventListener('click', saveNote);
-    document.getElementById('cancelBtn').addEventListener('click', hideNoteForm);
-
-    document.getElementById('noteText').addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' && e.ctrlKey) {
+    $('noteText').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
             saveNote();
         }
+    });
+
+    $('removeBypassBtn').addEventListener('click', async () => {
+        await chrome.storage.local.remove(bypassKey(currentDomain));
+        await refresh();
+        showMessage('Bypass removed successfully!', 'success');
     });
 }
 
 async function showNoteForm(mode, domain) {
-    editingDomain = domain;
+    editingDomain = mode === 'edit' ? domain : null;
 
-    document.getElementById('formTitle').textContent = mode === 'add' ? 'Add Note' : 'Edit Note';
-    document.getElementById('domainInput').value = domain;
-    document.getElementById('noteText').value = '';
+    $('formTitle').textContent = mode === 'add' ? 'Add Note' : 'Edit Note';
+    $('domainInput').value = domain || '';
+    $('noteText').value = '';
 
     if (mode === 'edit') {
         try {
-            const result = await chrome.storage.sync.get([domain]);
-            if (result[domain]) {
-                document.getElementById('noteText').value = result[domain].text;
-            }
+            const { [domain]: note } = await chrome.storage.sync.get(domain);
+            if (note) $('noteText').value = note.text;
         } catch (error) {
             console.error('Error loading note for editing:', error);
         }
     }
 
-    document.getElementById('noteForm').style.display = 'block';
-    document.getElementById('notesList').style.display = 'none';
-    document.getElementById('noteText').focus();
+    $('noteForm').style.display = 'block';
+    $('notesList').style.display = 'none';
+    (domain ? $('noteText') : $('domainInput')).focus();
 }
 
 function hideNoteForm() {
-    document.getElementById('noteForm').style.display = 'none';
-    document.getElementById('notesList').style.display = 'block';
+    $('noteForm').style.display = 'none';
+    $('notesList').style.display = 'block';
     editingDomain = null;
 }
 
 async function saveNote() {
-    const domain = document.getElementById('domainInput').value.trim();
-    const noteText = document.getElementById('noteText').value.trim();
+    const domain = normalizeDomain($('domainInput').value);
+    const noteText = $('noteText').value.trim();
 
     if (!domain) {
-        alert('Please enter a website domain');
+        showMessage('Enter a website like example.com', 'error');
+        $('domainInput').focus();
         return;
     }
 
     if (!noteText) {
-        alert('Please enter a note');
+        showMessage('Please enter a note', 'error');
+        $('noteText').focus();
         return;
     }
 
     try {
-        const noteData = {
-            text: noteText,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-        };
+        const now = new Date().toISOString();
+        const previous =
+            (await getNote(domain)) || (editingDomain && (await getNote(editingDomain)));
 
         await chrome.storage.sync.set({
-            [domain]: noteData,
+            [domain]: { text: noteText, createdAt: previous?.createdAt || now, updatedAt: now },
         });
 
-        // Update background script rules
-        chrome.runtime.sendMessage({ action: 'updateRules' });
+        // The domain was changed while editing: drop the note stored under the old one.
+        if (editingDomain && editingDomain !== domain) {
+            await chrome.storage.sync.remove(editingDomain);
+            await chrome.storage.local.remove(bypassKey(editingDomain));
+        }
 
         hideNoteForm();
-        await loadCurrentSite();
-        await loadAllNotes();
-        await loadBypassStatus();
-
-        // Show success message briefly
+        await refresh();
         showMessage('Note saved successfully!', 'success');
     } catch (error) {
         console.error('Error saving note:', error);
-        showMessage('Error saving note', 'error');
+        const full = /QUOTA/i.test(error.message);
+        showMessage(full ? 'Storage full: delete some notes first' : 'Error saving note', 'error');
     }
 }
 
-async function editNote(domain) {
-    showNoteForm('edit', domain);
+async function getNote(domain) {
+    const { [domain]: note } = await chrome.storage.sync.get(domain);
+    return note;
 }
 
 async function deleteNote(domain) {
-    if (confirm(`Are you sure you want to delete the note for ${domain}?`)) {
-        try {
-            await chrome.storage.sync.remove([domain]);
+    if (!confirm(`Are you sure you want to delete the note for ${domain}?`)) return;
 
-            await removeBypass(domain);
-
-            chrome.runtime.sendMessage({ action: 'updateRules' });
-
-            await loadCurrentSite();
-            await loadAllNotes();
-            await loadBypassStatus();
-            showMessage('Note deleted successfully!', 'success');
-        } catch (error) {
-            console.error('Error deleting note:', error);
-            showMessage('Error deleting note', 'error');
-        }
+    try {
+        await chrome.storage.sync.remove(domain);
+        await chrome.storage.local.remove(bypassKey(domain));
+        await refresh();
+        showMessage('Note deleted successfully!', 'success');
+    } catch (error) {
+        console.error('Error deleting note:', error);
+        showMessage('Error deleting note', 'error');
     }
 }
 
 function showMessage(text, type) {
-    const existing = document.querySelector('.message');
-    if (existing) {
-        existing.remove();
-    }
+    document.querySelector('.message')?.remove();
 
-    const message = document.createElement('div');
-    message.className = `message ${type}`;
-    message.textContent = text;
-    message.style.cssText = `
-        position: fixed;
-        top: 10px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: ${type === 'success' ? '#00b894' : '#ff7675'};
-        color: white;
-        padding: 8px 16px;
-        border-radius: 20px;
-        font-size: 0.8rem;
-        z-index: 1000;
-        animation: slideDown 0.3s ease-out;
-    `;
-
+    const message = el('div', `message ${type}`, text);
+    message.setAttribute('role', 'status');
     document.body.appendChild(message);
 
-    setTimeout(() => {
-        message.remove();
-    }, 3000);
+    setTimeout(() => message.remove(), 3000);
 }
-
-const style = document.createElement('style');
-style.textContent = `
-    @keyframes slideDown {
-        from {
-            opacity: 0;
-            transform: translateX(-50%) translateY(-20px);
-        }
-        to {
-            opacity: 1;
-            transform: translateX(-50%) translateY(0);
-        }
-    }
-`;
-document.head.appendChild(style);
