@@ -41,8 +41,9 @@
 
 ## Development
 
-- Built with Manifest V3 and `chrome.storage.local`  
-- Background script intercepts site loads and redirects to `note.html`  
+- Built with Manifest V3
+- Notes are stored in `chrome.storage.sync`; temporary bypasses in `chrome.storage.local`  
+- Background script uses `declarativeNetRequest` rules to redirect site loads to `note-page.html`  
 - Popup handles note management (add/edit/remove)  
 - Note page shows your custom message before redirecting to the site  
 

@@ -46,7 +46,7 @@ async function setupRequestInterception() {
             }
         },
         condition: {
-            urlFilter: `*://*.${domain}/*`,
+            urlFilter: `||${domain}^`, // matches the domain and its subdomains
             resourceTypes: ["main_frame"]
         }
     }));
