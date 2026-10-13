@@ -4,7 +4,7 @@
     "short_name": "No Not Again",
     "version": "2.0.0",
     "description": "Block distractions with your own words or a motivational quote, and keep notes on any web page.",
-    "homepage_url": "https://github.com/chapagainmanoj/NoNotAgain",
+    "homepage_url": "https://manojc.link/projects/no-not-again",
     "minimum_chrome_version": "116",
     "icons": {
         "16": "icons/icon-16.png",
