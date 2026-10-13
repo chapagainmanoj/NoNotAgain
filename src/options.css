@@ -1,0 +1,71 @@
+.options {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 32px 16px;
+}
+
+.options h1 {
+    font-size: 1.4rem;
+    margin-bottom: 20px;
+}
+
+.card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 16px;
+}
+
+.card h2 {
+    font-size: 1.05rem;
+    margin-bottom: 6px;
+}
+
+.muted {
+    color: var(--muted);
+    margin-bottom: 12px;
+    line-height: 1.5;
+}
+
+.small {
+    font-size: 0.8rem;
+}
+
+.check {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+
+.field-label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+
+.row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin: 6px 0 10px;
+}
+
+.status {
+    color: var(--muted);
+    font-size: 0.85rem;
+}
+
+.status.error {
+    color: var(--danger);
+}
+
+kbd {
+    padding: 1px 6px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--bg);
+    font-family: inherit;
+}

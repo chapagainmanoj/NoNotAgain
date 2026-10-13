@@ -1,14 +1,24 @@
 # NoNotAgain 🛑
 
-**NoNotAgain** is a lightweight Chrome extension that lets you attach a custom note to any website. When you visit a site with a note set, the extension momentarily blocks the site and displays your note helping you stay focused.
+**NoNotAgain** is a lightweight Chrome and Edge extension with two jobs:
+
+- **Block distractions with your own words.** When you open a site you've chosen, it pauses on a
+  page showing your note, a motivational quote, or both. Continue for a while, or turn back.
+- **Keep notes for any website.** They show up in the side panel whenever you're on that site, and
+  the toolbar icon shows how many there are.
+
+Everything stays in your browser. Nothing is sent to a server.
 
 ---
 
 ## Features
 
-- ✅ Set and edit a motivational or reminder note for any website/domain
-- 🚫 Automatically interrupts access to the site and shows the note
-- 🛠️ Add or remove notes easily through the extension popup
+- 🚫 Block a site with a personal note, a motivational quote, or both
+- ⏱ Bypass for 1 hour, 6 hours, a day or a week; blocking resumes automatically
+- 📝 Site notes in the side panel, with search across all notes
+- 🖱 Right-click to add a note or save selected text
+- 🔢 Toolbar badge with the note count for the current page
+- 💾 Export and import everything as a JSON file
 
 ---
 
@@ -24,18 +34,14 @@
 
 ## How to Use
 
-1. Click the NoNotAgain icon in the toolbar
-2. In the popup, enter a domain (e.g., `example.com`) and your note
-3. Save it—next time you open that site, the note page will show briefly
-4. To remove a note, simply click “Remove” next to the domain in the popup
+**Block a site:** open the site, click the toolbar icon, then **Block Site**. Choose what the block
+page shows and write your note.
 
----
+**Take site notes:** click **Open Notes** in the popup, press Alt+Shift+N, or right-click the page
+and choose **Add note**. Notes appear on every page of that site.
 
-## Suggested Workflow
-
-- 🎯 Use for productivity: set reminders like “Focus on task, not Instagram.”
-- ⏱ Temporarily block sites only when you need to concentrate
-- 🔄 Notes are easily updated or deleted via the toolbar popup
+**Back up:** Settings → **Export to file**. Site notes are stored only on this device; blocked
+sites and your quotes sync through Chrome.
 
 ---
 
@@ -51,10 +57,10 @@ pnpm icons   # re-renders src/icons/*.png from assets/icon.svg (needs rsvg-conve
 ```
 
 - Extension source lives in `src/` (Manifest V3, no build step)
-- Notes are stored in `chrome.storage.sync`; temporary bypasses in `chrome.storage.local`
-- Background script uses `declarativeNetRequest` rules to redirect site loads to `note-page.html`
-- Popup handles note management (add/edit/remove)
-- Note page shows your custom message before redirecting to the site
+- Storage layout is documented at the top of `src/storage.js`
+- `background.js` keeps `declarativeNetRequest` redirect rules, the badge and context menus in sync
+- `popup.*` manages blocked sites, `sidepanel.*` site notes, `options.*` quotes and backup
+- `note-page.*` is the block page
 
 ---
 

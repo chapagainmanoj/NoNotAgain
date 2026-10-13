@@ -4,28 +4,32 @@
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>No Not Again</title>
+        <link rel="stylesheet" href="theme.css" />
         <link rel="stylesheet" href="popup.css" />
     </head>
 
     <body>
         <div class="container">
-            <header>
-                <h1>🙈 No Not Again</h1>
-                <p class="subtitle">Manage your website notes</p>
+            <header class="popup-header">
+                <div class="brand"><img src="icons/icon-32.png" alt="" />No Not Again</div>
+                <button class="link muted" id="optionsBtn">Settings</button>
             </header>
 
             <div class="current-site" id="currentSite">
-                <h3>Current Site</h3>
+                <h3>Current site</h3>
                 <div class="site-info">
                     <span class="domain" id="currentDomain">Loading...</span>
                     <div class="actions">
-                        <button id="addNoteBtn" class="btn btn-primary">Add Note</button>
-                        <button id="editNoteBtn" class="btn btn-secondary" hidden>Edit Note</button>
+                        <button id="addNoteBtn" class="btn btn-primary">Block site</button>
+                        <button id="editNoteBtn" class="btn btn-secondary" hidden>
+                            Edit block
+                        </button>
                     </div>
                 </div>
+                <div class="block-summary" id="blockSummary" hidden></div>
                 <div class="bypass-status" id="bypassStatus" hidden>
                     <div>
-                        <strong>⏰ Note Bypassed</strong>
+                        <strong>Unblocked for now</strong>
                         <div class="bypass-status-time" id="bypassTimeLeft"></div>
                     </div>
                     <button id="removeBypassBtn" class="btn btn-small btn-remove-bypass">
@@ -34,17 +38,33 @@
                 </div>
             </div>
 
+            <div class="page-notes" id="pageNotes">
+                <div>
+                    <h3>Site notes</h3>
+                    <div class="page-notes-count" id="pageNotesCount"></div>
+                </div>
+                <button id="openPanelBtn" class="btn btn-primary">Open notes</button>
+            </div>
+
             <div class="note-form" id="noteForm" style="display: none">
-                <h3 id="formTitle">Add Note</h3>
+                <h3 id="formTitle">Block site</h3>
                 <div class="form-group">
-                    <label for="domainInput">Website:</label>
+                    <label for="domainInput">Website</label>
                     <input type="text" id="domainInput" placeholder="e.g., facebook.com" />
                 </div>
                 <div class="form-group">
-                    <label for="noteText">Note:</label>
+                    <label for="showSelect">On the block page, show</label>
+                    <select id="showSelect">
+                        <option value="note">My note</option>
+                        <option value="quote">A motivational quote</option>
+                        <option value="both">My note and a quote</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="noteText">Note</label>
                     <textarea
                         id="noteText"
-                        placeholder="Enter your note here..."
+                        placeholder="Why do you want to stay away from this site?"
                         rows="4"
                     ></textarea>
                 </div>
@@ -55,9 +75,9 @@
             </div>
 
             <div class="notes-list" id="notesList">
-                <h3>Your Notes</h3>
+                <h3>Blocked sites</h3>
                 <div id="notesContainer">
-                    <!-- Notes will be populated here -->
+                    <!-- Blocked sites will be populated here -->
                 </div>
             </div>
         </div>

@@ -2,18 +2,34 @@
 import {
     MAX_NOTE_LENGTH,
     NOTE_PAGE,
-    bypassKey,
     domainFromUrl,
     findNoteDomain,
     isBypassActive,
     normalizeDomain,
     parseNotePageUrl,
 } from './domain.js';
+import {
+    getBlock,
+    getBlocks,
+    getBypass,
+    getBypasses,
+    getSiteNotes,
+    removeBlock,
+    removeBypasses,
+    saveBlock,
+} from './storage.js';
 
-// Domain the current tab's note is (or would be) stored under; null on browser pages.
+const SHOW_LABELS = {
+    note: 'your note',
+    quote: 'a motivational quote',
+    both: 'your note and a quote',
+};
+
+// Domain the current tab's block rule is (or would be) stored under; null on browser pages.
 let currentDomain = null;
-// Domain of the note open in the form when editing, so a domain change can remove the old note.
+// Domain of the rule open in the form when editing, so a domain change can remove the old rule.
 let editingDomain = null;
+let currentTab = null;
 
 const $ = (id) => document.getElementById(id);
 
@@ -25,27 +41,32 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 async function refresh() {
     await loadCurrentSite();
-    await Promise.all([loadAllNotes(), loadBypassStatus()]);
+    await Promise.all([loadBlockedSites(), loadBypassStatus(), loadPageNotes()]);
 }
 
 // Load current site information
 async function loadCurrentSite() {
     const label = $('currentDomain');
     try {
-        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-        const url = tab?.url || '';
+        [currentTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        const url = currentTab?.url || '';
         const hostname = url.startsWith(chrome.runtime.getURL(NOTE_PAGE))
             ? parseNotePageUrl(url).domain
             : domainFromUrl(url);
 
-        const notes = await chrome.storage.sync.get(null);
-        const noteDomain = findNoteDomain(hostname, Object.keys(notes));
-        currentDomain = noteDomain || hostname;
+        const blocks = await getBlocks();
+        const blockDomain = findNoteDomain(hostname, Object.keys(blocks));
+        currentDomain = blockDomain || hostname;
 
         label.classList.toggle('unavailable', !currentDomain);
-        label.textContent = currentDomain || 'Notes can’t be added to this page';
-        $('addNoteBtn').hidden = Boolean(noteDomain);
-        $('editNoteBtn').hidden = !noteDomain;
+        label.textContent = currentDomain || 'Sites can’t be blocked from this page';
+        $('addNoteBtn').hidden = Boolean(blockDomain);
+        $('editNoteBtn').hidden = !blockDomain;
+
+        const block = blocks[blockDomain];
+        $('blockSummary').hidden = !block;
+        if (block)
+            $('blockSummary').textContent = `Blocked: shows ${SHOW_LABELS[block.show || 'note']}.`;
     } catch (error) {
         console.error('Error loading current site:', error);
         currentDomain = null;
@@ -60,8 +81,7 @@ async function loadBypassStatus() {
     if (!currentDomain) return;
 
     try {
-        const key = bypassKey(currentDomain);
-        const { [key]: bypass } = await chrome.storage.local.get(key);
+        const bypass = await getBypass(currentDomain);
         if (isBypassActive(bypass)) {
             $('bypassTimeLeft').textContent = `Expires in ${getTimeLeft(bypass.expireTime)}`;
             status.hidden = false;
@@ -69,6 +89,16 @@ async function loadBypassStatus() {
     } catch (error) {
         console.error('Error loading bypass status:', error);
     }
+}
+
+async function loadPageNotes() {
+    const site = currentTab?.url ? await getSiteNotes(currentTab.url) : null;
+    const total = site?.notes.length || 0;
+    $('pageNotesCount').textContent = !site
+        ? 'Available on websites'
+        : total
+          ? `${total} note${total === 1 ? '' : 's'} for ${site.hostname}`
+          : 'No notes for this site yet';
 }
 
 function getTimeLeft(expireTime) {
@@ -94,29 +124,27 @@ function el(tag, className, text) {
     return node;
 }
 
-async function loadAllNotes() {
+async function loadBlockedSites() {
     const container = $('notesContainer');
     try {
-        const [notes, local] = await Promise.all([
-            chrome.storage.sync.get(null),
-            chrome.storage.local.get(null),
-        ]);
-        const domains = Object.keys(notes).sort();
+        const [blocks, bypasses] = await Promise.all([getBlocks(), getBypasses()]);
+        const domains = Object.keys(blocks).sort();
 
         if (domains.length === 0) {
-            container.replaceChildren(el('div', 'empty-state', 'No notes created yet'));
+            container.replaceChildren(el('div', 'empty-state', 'No blocked sites yet'));
             return;
         }
 
         container.replaceChildren(
             ...domains.map((domain) => {
-                const text = notes[domain].text;
+                const block = blocks[domain];
+                const text = block.text || `Shows ${SHOW_LABELS[block.show || 'note']}`;
                 const preview = text.length > 60 ? text.substring(0, 60) + '...' : text;
 
                 const edit = el('button', 'btn btn-secondary btn-small', 'Edit');
                 edit.addEventListener('click', () => showNoteForm('edit', domain));
-                const remove = el('button', 'btn btn-danger btn-small', 'Delete');
-                remove.addEventListener('click', () => deleteNote(domain));
+                const remove = el('button', 'btn btn-danger btn-small', 'Unblock');
+                remove.addEventListener('click', () => unblock(domain));
 
                 const actions = el('div', 'note-actions');
                 actions.append(edit, remove);
@@ -126,17 +154,17 @@ async function loadAllNotes() {
                 const item = el('div', 'note-item');
                 item.append(header, el('div', 'note-preview', preview));
 
-                const bypass = local[bypassKey(domain)];
+                const bypass = bypasses[domain];
                 if (isBypassActive(bypass)) {
                     const timeLeft = getTimeLeft(bypass.expireTime);
-                    item.append(el('div', 'bypass-badge', `⏰ Bypassed (${timeLeft})`));
+                    item.append(el('div', 'bypass-badge', `Unblocked · ${timeLeft} left`));
                 }
                 return item;
             }),
         );
     } catch (error) {
-        console.error('Error loading notes:', error);
-        container.replaceChildren(el('div', 'empty-state', 'Error loading notes'));
+        console.error('Error loading blocked sites:', error);
+        container.replaceChildren(el('div', 'empty-state', 'Error loading blocked sites'));
     }
 }
 
@@ -146,6 +174,7 @@ function setupEventListeners() {
 
     $('saveBtn').addEventListener('click', saveNote);
     $('cancelBtn').addEventListener('click', hideNoteForm);
+    $('showSelect').addEventListener('change', updateNoteRequirement);
 
     $('noteText').addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
@@ -154,27 +183,47 @@ function setupEventListeners() {
     });
 
     $('removeBypassBtn').addEventListener('click', async () => {
-        await chrome.storage.local.remove(bypassKey(currentDomain));
+        await removeBypasses([currentDomain]);
         await refresh();
-        showMessage('Bypass removed successfully!', 'success');
+        showMessage('Blocking resumed', 'success');
     });
+
+    // sidePanel.open must run inside the click handler, before any await.
+    $('openPanelBtn').addEventListener('click', () => {
+        chrome.sidePanel.open({ windowId: currentTab.windowId }).then(() => window.close());
+    });
+
+    $('optionsBtn').addEventListener('click', () => chrome.runtime.openOptionsPage());
+}
+
+// A note is optional when the block page shows only a quote.
+function updateNoteRequirement() {
+    const quoteOnly = $('showSelect').value === 'quote';
+    $('noteText').placeholder = quoteOnly
+        ? 'Optional: shown if no quotes are available'
+        : 'Why do you want to stay away from this site?';
 }
 
 async function showNoteForm(mode, domain) {
     editingDomain = mode === 'edit' ? domain : null;
 
-    $('formTitle').textContent = mode === 'add' ? 'Add Note' : 'Edit Note';
+    $('formTitle').textContent = mode === 'add' ? 'Block site' : 'Edit block';
     $('domainInput').value = domain || '';
     $('noteText').value = '';
+    $('showSelect').value = 'note';
 
     if (mode === 'edit') {
         try {
-            const { [domain]: note } = await chrome.storage.sync.get(domain);
-            if (note) $('noteText').value = note.text;
+            const block = await getBlock(domain);
+            if (block) {
+                $('noteText').value = block.text;
+                $('showSelect').value = block.show || 'note';
+            }
         } catch (error) {
-            console.error('Error loading note for editing:', error);
+            console.error('Error loading block for editing:', error);
         }
     }
+    updateNoteRequirement();
 
     $('noteForm').style.display = 'block';
     $('notesList').style.display = 'none';
@@ -190,6 +239,7 @@ function hideNoteForm() {
 async function saveNote() {
     const domain = normalizeDomain($('domainInput').value);
     const noteText = $('noteText').value.trim();
+    const show = $('showSelect').value;
 
     if (!domain) {
         showMessage('Enter a website like example.com', 'error');
@@ -197,60 +247,41 @@ async function saveNote() {
         return;
     }
 
-    if (!noteText) {
+    if (!noteText && show !== 'quote') {
         showMessage('Please enter a note', 'error');
         $('noteText').focus();
         return;
     }
 
     try {
-        const now = new Date().toISOString();
-        const previous =
-            (await getNote(domain)) || (editingDomain && (await getNote(editingDomain)));
-
-        await chrome.storage.sync.set({
-            [domain]: { text: noteText, createdAt: previous?.createdAt || now, updatedAt: now },
-        });
-
-        // The domain was changed while editing: drop the note stored under the old one.
-        if (editingDomain && editingDomain !== domain) {
-            await chrome.storage.sync.remove(editingDomain);
-            await chrome.storage.local.remove(bypassKey(editingDomain));
-        }
-
+        await saveBlock(domain, { text: noteText, show }, editingDomain);
         hideNoteForm();
         await refresh();
-        showMessage('Note saved successfully!', 'success');
+        showMessage('Saved!', 'success');
     } catch (error) {
-        console.error('Error saving note:', error);
+        console.error('Error saving block:', error);
         const full = /QUOTA/i.test(error.message);
-        showMessage(full ? 'Storage full: delete some notes first' : 'Error saving note', 'error');
+        showMessage(full ? 'Storage full: unblock some sites first' : 'Error saving', 'error');
     }
 }
 
-async function getNote(domain) {
-    const { [domain]: note } = await chrome.storage.sync.get(domain);
-    return note;
-}
-
-async function deleteNote(domain) {
-    if (!confirm(`Are you sure you want to delete the note for ${domain}?`)) return;
+async function unblock(domain) {
+    if (!confirm(`Stop blocking ${domain}?`)) return;
 
     try {
-        await chrome.storage.sync.remove(domain);
-        await chrome.storage.local.remove(bypassKey(domain));
+        await removeBlock(domain);
         await refresh();
-        showMessage('Note deleted successfully!', 'success');
+        showMessage(`${domain} unblocked`, 'success');
     } catch (error) {
-        console.error('Error deleting note:', error);
-        showMessage('Error deleting note', 'error');
+        console.error('Error unblocking:', error);
+        showMessage('Error unblocking', 'error');
     }
 }
 
 function showMessage(text, type) {
-    document.querySelector('.message')?.remove();
+    document.querySelector('.toast')?.remove();
 
-    const message = el('div', `message ${type}`, text);
+    const message = el('div', `toast ${type}`, text);
     message.setAttribute('role', 'status');
     document.body.appendChild(message);
 

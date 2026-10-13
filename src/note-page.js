@@ -1,4 +1,6 @@
 import { parseNotePageUrl } from './domain.js';
+import { pickQuote } from './quotes.js';
+import { getBlock, getSettings } from './storage.js';
 
 const { domain: currentDomain, originalUrl } = parseNotePageUrl(window.location.href);
 
@@ -16,9 +18,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     $('domainName').textContent = currentDomain;
 
     try {
-        const { [currentDomain]: note } = await chrome.storage.sync.get(currentDomain);
-        if (note?.text) {
-            displayNote(note);
+        const [block, settings] = await Promise.all([getBlock(currentDomain), getSettings()]);
+        if (block) {
+            displayNote(block, settings);
         } else {
             showError('Note not found');
         }
@@ -28,10 +30,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 });
 
-// Display the note
-function displayNote(noteData) {
+// Display the note, a quote, or both, depending on the site's "show" setting
+function displayNote(block, settings) {
+    const show = block.show || 'note';
+    const quote = show !== 'note' ? pickQuote(settings) : null;
+    const text = show !== 'quote' || !quote ? block.text : '';
+
     $('loading').hidden = true;
-    $('noteText').textContent = noteData.text;
+    $('noteText').textContent =
+        text || (quote ? '' : 'You chose to pause before visiting this site.');
+    $('noteBox').hidden = !$('noteText').textContent;
+    if (quote) {
+        $('quoteText').textContent = quote.text;
+        $('quoteAuthor').textContent = quote.author ? `— ${quote.author}` : '';
+        $('quoteBox').hidden = false;
+    }
     $('noteContent').hidden = false;
 
     $('bypassBtn').addEventListener('click', showBypassOptions);
@@ -49,14 +62,14 @@ function continueToSite() {
 }
 
 function showBypassOptions() {
-    const bypassOptions = $('bypassOptions');
-    bypassOptions.style.display = 'block';
-    bypassOptions.scrollIntoView({ behavior: 'smooth' });
-    bypassOptions.querySelector('.bypass-duration-btn').focus();
+    $('mainActions').hidden = true;
+    $('bypassOptions').hidden = false;
+    $('bypassOptions').querySelector('.bypass-duration-btn').focus();
 }
 
 function hideBypassOptions() {
-    $('bypassOptions').style.display = 'none';
+    $('bypassOptions').hidden = true;
+    $('mainActions').hidden = false;
     $('bypassBtn').focus();
 }
 
@@ -94,20 +107,20 @@ function getDurationText(duration) {
 }
 
 function showBypassConfirmation(duration) {
-    const confirmation = document.createElement('div');
+    const confirmation = document.createElement('p');
     confirmation.className = 'confirmation-message';
     confirmation.setAttribute('role', 'status');
-    confirmation.textContent = `✅ Note bypassed for ${duration}`;
-    document.body.appendChild(confirmation);
+    confirmation.textContent = `Unblocked for ${duration.toLowerCase()}. Opening the site…`;
+    $('bypassOptions').replaceWith(confirmation);
 
     setTimeout(continueToSite, 1500);
 }
 
 async function deleteNote() {
-    if (!confirm(`Are you sure you want to delete the note for ${currentDomain}?`)) return;
+    if (!confirm(`Stop blocking ${currentDomain}? This removes its block note.`)) return;
 
     try {
-        await sendToBackground({ action: 'deleteNote', domain: currentDomain });
+        await sendToBackground({ action: 'deleteBlock', domain: currentDomain });
         continueToSite();
     } catch (error) {
         console.error('Error deleting note:', error);
@@ -135,7 +148,7 @@ function showError(message) {
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
         e.preventDefault();
-        if ($('bypassOptions').style.display === 'block') {
+        if (!$('bypassOptions').hidden) {
             hideBypassOptions();
         } else {
             goBack();

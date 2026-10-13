@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>No Not Again — Settings</title>
+        <link rel="stylesheet" href="theme.css" />
+        <link rel="stylesheet" href="options.css" />
+    </head>
+
+    <body>
+        <div class="options">
+            <h1 class="brand"><img src="icons/icon-32.png" alt="" />Settings</h1>
+
+            <section class="card">
+                <h2>Motivational quotes</h2>
+                <p class="muted">
+                    Shown on the block page for sites set to “Motivational quote” or “Both”.
+                </p>
+                <label class="check">
+                    <input type="checkbox" id="builtInQuotes" />
+                    Use built-in quotes (<span id="builtInCount"></span>)
+                </label>
+                <label for="customQuotes" class="field-label">Your own quotes, one per line</label>
+                <textarea
+                    id="customQuotes"
+                    rows="6"
+                    placeholder="Is this the best use of my time right now?&#10;Finish first, scroll later. — Me"
+                ></textarea>
+                <p class="muted small">
+                    Add an author after “ — ”. Your quotes sync across devices.
+                </p>
+                <div class="row">
+                    <button class="btn btn-primary" id="saveQuotes">Save quotes</button>
+                    <span class="status" id="quotesStatus" role="status"></span>
+                </div>
+            </section>
+
+            <section class="card">
+                <h2>Backup</h2>
+                <p class="muted">
+                    Site notes are stored only on this device. Export them regularly, or to move
+                    them to another browser.
+                </p>
+                <p class="muted small" id="usage"></p>
+                <div class="row">
+                    <button class="btn btn-primary" id="exportBtn">Export to file</button>
+                    <button class="btn btn-secondary" id="importBtn">Import from file</button>
+                    <input type="file" id="importFile" accept="application/json,.json" hidden />
+                    <span class="status" id="backupStatus" role="status"></span>
+                </div>
+                <p class="muted small">
+                    Importing merges with what you have: block notes for the same site are replaced,
+                    site notes are added (nothing is deleted).
+                </p>
+            </section>
+
+            <section class="card">
+                <h2>Keyboard shortcut</h2>
+                <p class="muted">
+                    Open the notes panel with <kbd id="shortcut">Alt+Shift+N</kbd>.
+                    <button class="link" id="shortcutsLink">Change shortcut</button>
+                </p>
+            </section>
+        </div>
+
+        <script type="module" src="options.js"></script>
+    </body>
+</html>

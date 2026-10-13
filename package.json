@@ -1,6 +1,6 @@
 {
     "name": "no-not-again",
-    "version": "1.0.1",
+    "version": "2.0.0",
     "private": true,
     "description": "Chrome/Edge extension that shows personal notes before accessing specified websites",
     "license": "MIT",

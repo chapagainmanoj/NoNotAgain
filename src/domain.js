@@ -1,7 +1,8 @@
-// Domain helpers shared by the background script, popup and note page.
+// Domain and URL helpers shared by every extension page.
 
 export const NOTE_PAGE = 'note-page.html';
-export const MAX_NOTE_LENGTH = 1000; // keeps each note well under sync storage's 8 KB item limit
+export const MAX_NOTE_LENGTH = 1000; // keeps each blocking note well under sync storage's 8 KB item limit
+export const MAX_SITE_NOTE_LENGTH = 10000;
 
 const HOSTNAME_RE = /^(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9-]{2,63}$/;
 
@@ -54,10 +55,6 @@ export function findNoteDomain(hostname, noteDomains) {
 
 export function isBypassActive(bypass, now = Date.now()) {
     return Boolean(bypass && now < bypass.expireTime);
-}
-
-export function bypassKey(domain) {
-    return `bypass_${domain}`;
 }
 
 function escapeRegex(text) {

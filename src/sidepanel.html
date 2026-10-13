@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>No Not Again — Notes</title>
+        <link rel="stylesheet" href="theme.css" />
+        <link rel="stylesheet" href="sidepanel.css" />
+    </head>
+
+    <body>
+        <header class="panel-header">
+            <h1 class="brand"><img src="icons/icon-32.png" alt="" />Notes</h1>
+            <nav class="tabs" role="tablist">
+                <button class="tab active" role="tab" id="tabCurrent" aria-selected="true">
+                    This site
+                </button>
+                <button class="tab" role="tab" id="tabAll" aria-selected="false">All notes</button>
+            </nav>
+        </header>
+
+        <main id="viewCurrent">
+            <p class="unavailable" id="unavailable" hidden>
+                Notes are available on websites. Switch to a website tab to see or add notes.
+            </p>
+
+            <div id="currentNotes">
+                <section class="note-section">
+                    <div class="section-header">
+                        <h2>
+                            <span id="siteName"></span> <span class="count" id="noteCount"></span>
+                        </h2>
+                        <button class="btn btn-primary btn-small" id="addBtn">+ Add</button>
+                    </div>
+                    <form class="add-form" id="addForm" hidden>
+                        <textarea rows="4" placeholder="Write a note..."></textarea>
+                        <div class="form-actions">
+                            <button type="button" class="btn btn-secondary btn-small" data-cancel>
+                                Cancel
+                            </button>
+                            <button type="submit" class="btn btn-primary btn-small">Save</button>
+                        </div>
+                    </form>
+                    <ul class="note-list" id="noteList"></ul>
+                </section>
+            </div>
+        </main>
+
+        <main id="viewAll" hidden>
+            <input
+                type="search"
+                id="search"
+                class="search"
+                placeholder="Search all notes..."
+                aria-label="Search all notes"
+            />
+            <ul class="note-list" id="allList"></ul>
+        </main>
+
+        <footer class="panel-footer">
+            <button class="link muted" id="openOptions">Settings, export &amp; import</button>
+        </footer>
+
+        <template id="noteTemplate">
+            <li class="note">
+                <a class="note-target" hidden></a>
+                <div class="note-text"></div>
+                <div class="note-meta">
+                    <span class="note-date"></span>
+                    <span class="note-buttons">
+                        <button class="link" data-edit>Edit</button>
+                        <button class="link danger" data-delete>Delete</button>
+                    </span>
+                </div>
+            </li>
+        </template>
+
+        <script type="module" src="sidepanel.js"></script>
+    </body>
+</html>

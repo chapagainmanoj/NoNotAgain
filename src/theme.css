@@ -1,0 +1,204 @@
+/* Shared design tokens and base styles for every extension page. */
+
+[hidden] {
+    display: none !important;
+}
+
+:root {
+    --accent: #6c5ce7;
+    --accent-hover: #5a4bd4;
+    --accent-soft: rgba(108, 92, 231, 0.1);
+    --on-accent: #ffffff;
+    --text: #1f2330;
+    --muted: #6b7080;
+    --border: #e6e5ef;
+    --bg: #f6f6f9;
+    --card: #ffffff;
+    --danger: #d63031;
+    --success: #00a884;
+    --radius: 10px;
+    --font: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --accent: #a29bfe;
+        --accent-hover: #b8b2ff;
+        --accent-soft: rgba(162, 155, 254, 0.14);
+        --on-accent: #17171d;
+        --text: #ecebf3;
+        --muted: #9d9cae;
+        --border: #34333f;
+        --bg: #17171d;
+        --card: #212029;
+        --danger: #ff7675;
+        --success: #3dd9a8;
+        color-scheme: dark;
+    }
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: var(--font);
+    font-size: 14px;
+    line-height: 1.45;
+    color: var(--text);
+    background: var(--bg);
+}
+
+/* ---- Buttons ---- */
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    padding: 7px 14px;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition:
+        background 0.15s,
+        border-color 0.15s,
+        color 0.15s;
+}
+
+.btn:focus-visible,
+.link:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+.btn-small {
+    padding: 4px 10px;
+    font-size: 0.8rem;
+}
+
+.btn-primary {
+    background: var(--accent);
+    color: var(--on-accent);
+}
+
+.btn-primary:hover {
+    background: var(--accent-hover);
+}
+
+.btn-secondary {
+    background: var(--card);
+    border-color: var(--border);
+    color: var(--text);
+}
+
+.btn-secondary:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.btn-danger {
+    background: none;
+    border-color: var(--border);
+    color: var(--danger);
+}
+
+.btn-danger:hover {
+    border-color: var(--danger);
+}
+
+.link {
+    border: none;
+    background: none;
+    color: var(--accent);
+    font: inherit;
+    cursor: pointer;
+}
+
+.link:hover {
+    text-decoration: underline;
+}
+
+.link.muted {
+    color: var(--muted);
+}
+
+.link.danger {
+    color: var(--danger);
+}
+
+/* ---- Form controls ---- */
+
+input[type='text'],
+input[type='search'],
+select,
+textarea {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--card);
+    color: var(--text);
+    font: inherit;
+}
+
+textarea {
+    resize: vertical;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: -1px;
+    border-color: transparent;
+}
+
+/* ---- Brand ---- */
+
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 700;
+}
+
+.brand img {
+    width: 22px;
+    height: 22px;
+}
+
+/* ---- Toast ---- */
+
+.toast {
+    position: fixed;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 8px 16px;
+    border-radius: 8px;
+    background: var(--text);
+    color: var(--bg);
+    font-size: 0.85rem;
+    font-weight: 600;
+    z-index: 1000;
+    animation: toast-in 0.2s ease-out;
+}
+
+.toast.error {
+    background: var(--danger);
+    color: #fff;
+}
+
+@keyframes toast-in {
+    from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(-8px);
+    }
+}
